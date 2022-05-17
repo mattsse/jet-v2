@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: cache-cli-deps
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: $${{ env.cli-id }}
           path: |
@@ -64,14 +64,14 @@ jobs:
           - "18000:8000"
     steps:
       - id: cache-cli-deps
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: $${{ env.cli-id }}
           path: |
             ~/.local/share/solana
             ~/.cargo/bin/anchor
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install Rust nightly
         run: rustup default ${{ env.rust-version }} && rustup toolchain install ${{ env.rust-version }} --component llvm-tools-preview
@@ -89,9 +89,7 @@ jobs:
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
-          # Remove when repo is public
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: true

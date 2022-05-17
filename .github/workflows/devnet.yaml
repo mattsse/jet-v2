@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: cache-${{ runner.os }}-a${{ env.ANCHOR_CLI_VERSION }}-s${{ env.SOLANA_CLI_VERSION }}
           path: |
@@ -51,10 +51,10 @@ jobs:
     needs: [build]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Recover Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: cache-${{ runner.os }}-a${{ env.ANCHOR_CLI_VERSION }}-s${{ env.SOLANA_CLI_VERSION }}
           path: |
