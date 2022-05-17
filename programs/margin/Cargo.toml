@@ -1,0 +1,36 @@
+[package]
+name = "jet-proto-margin"
+version = "0.1.0"
+description = "Manager for margin accounts"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "jet_margin"
+path = "src/lib.rs"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+devnet = []
+cli = ["no-entrypoint", "serde"]
+
+[dependencies]
+static_assertions = "1.1.0"
+bytemuck = { version = "1.7", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+anchor-lang = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+anchor-spl = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+
+pyth-client = { version = "0.5", features = ["no-entrypoint"] }
+
+jet-proto-math = { git = "https://github.com/jet-lab/program-libraries", branch = "main" }
+jet-proto-proc-macros = "1"
+jet-proto-metadata = { path = "../metadata", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_test = "1.0"

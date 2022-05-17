@@ -1,0 +1,36 @@
+[package]
+name = "jet-proto-margin-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "jet_margin_sdk"
+path = "src/lib.rs"
+
+[features]
+devnet = []
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+async-trait = "0.1"
+bytemuck = "1"
+futures = "0.3"
+tokio = { version = "1.15", features = ["rt"] }
+
+solana-sdk = "1.9"
+
+anchor-lang = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+anchor-spl = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+anchor-client = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+
+jet-proto-solana-rpc-api = { path = "../solana-rpc-api" }
+jet-proto-control = { path = "../../programs/control", features = ["no-entrypoint"] }
+jet-proto-margin = { path = "../../programs/margin", features = ["no-entrypoint"] }
+jet-proto-metadata = { path = "../../programs/metadata", features = ["no-entrypoint"] }
+jet-proto-margin-pool = { path = "../../programs/margin-pool", features = ["no-entrypoint"] }
+jet-proto-margin-swap = { path = "../../programs/margin-swap", features = ["no-entrypoint"] }
+
+# Token swaps
+spl-token = "3"
+spl-token-swap = "2"

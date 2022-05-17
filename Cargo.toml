@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "programs/*",
+    "tests/hosted",
+    "libraries/rust",
+    "libraries/simulation",
+    "libraries/solana-rpc-api",
+]
+
+[patch.crates-io]
+jet-proto-math = { git = "https://github.com/jet-lab/program-libraries", branch = "main" }

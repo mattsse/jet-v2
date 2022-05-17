@@ -1,0 +1,36 @@
+[package]
+name = "hosted-tests"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+test = []
+default = ["test"]
+
+[dependencies]
+bincode = "1.3"
+bytes = "1"
+bytemuck = "1"
+parking_lot = "0.12"
+anyhow = { version = "1", features = ["backtrace"] }
+rand = "0.7"
+
+tokio = { version = "1", features = ["macros"] }
+
+solana-sdk = "1.9"
+
+anchor-lang = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+anchor-spl = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+
+spl-token = "3"
+pyth-client = "0.5"
+
+jet-proto-control = { path = "../../programs/control", features = ["no-entrypoint", "devnet"] }
+jet-proto-margin = { path = "../../programs/margin", features = ["no-entrypoint"] }
+jet-proto-margin-pool = { path = "../../programs/margin-pool", features = ["no-entrypoint", "devnet"] }
+jet-proto-margin-swap = { path = "../../programs/margin-swap", features = ["no-entrypoint"] }
+jet-proto-metadata = { path = "../../programs/metadata", features = ["no-entrypoint", "devnet"] }
+
+jet-proto-solana-rpc-api = { path = "../../libraries/solana-rpc-api" }
+jet-proto-margin-sdk = { path = "../../libraries/rust", features = ["devnet"] }
+jet-proto-simulation = { path = "../../libraries/simulation", features = ["margin"] }

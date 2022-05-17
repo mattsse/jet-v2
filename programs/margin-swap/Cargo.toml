@@ -1,0 +1,26 @@
+[package]
+name = "jet-proto-margin-swap"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "jet_margin_swap"
+path = "src/lib.rs"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+devnet = []
+
+[dependencies]
+anchor-lang = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+anchor-spl = { git = "https://github.com/jet-lab/anchor", branch = "master" }
+spl-token-swap = { version = "2.1", features = ["no-entrypoint"] }
+
+jet-proto-margin-pool = { path = "../margin-pool", features = ["cpi", "no-entrypoint"] }
+jet-proto-margin = { path = "../margin", features = ["cpi", "no-entrypoint"] }
