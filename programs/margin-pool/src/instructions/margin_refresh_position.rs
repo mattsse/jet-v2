@@ -46,32 +46,28 @@ pub fn margin_refresh_position_handler(ctx: Context<MarginRefreshPosition>) -> R
 
     let prices = pool.calculate_prices(token_oracle);
 
-    let deposit_price_info = PriceChangeInfo {
-        slot: token_oracle.valid_slot,
-        exponent: token_oracle.expo,
-        value: prices.deposit_note_price,
-        confidence: prices.deposit_note_conf,
-        twap: prices.deposit_note_twap,
-    };
-
-    let loan_price_info = PriceChangeInfo {
-        slot: token_oracle.valid_slot,
-        exponent: token_oracle.expo,
-        value: prices.loan_note_price,
-        confidence: prices.loan_note_conf,
-        twap: prices.loan_note_twap,
-    };
-
     // Tell the margin program what the current prices are
     jet_margin::write_adapter_result(&AdapterResult {
         position_changes: vec![
             (
                 pool.deposit_note_mint,
-                vec![PositionChange::Price(deposit_price_info)],
+                vec![PositionChange::Price(PriceChangeInfo {
+                    slot: token_oracle.valid_slot,
+                    exponent: token_oracle.expo,
+                    value: prices.deposit_note_price,
+                    confidence: prices.deposit_note_conf,
+                    twap: prices.deposit_note_twap,
+                })],
             ),
             (
                 pool.loan_note_mint,
-                vec![PositionChange::Price(loan_price_info)],
+                vec![PositionChange::Price(PriceChangeInfo {
+                    slot: token_oracle.valid_slot,
+                    exponent: token_oracle.expo,
+                    value: prices.loan_note_price,
+                    confidence: prices.loan_note_conf,
+                    twap: prices.loan_note_twap,
+                })],
             ),
         ],
     })?;

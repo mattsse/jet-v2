@@ -57,9 +57,9 @@ pub enum PositionChange {
     /// so the margin account must update its price
     Price(PriceChangeInfo),
 
-    /// Flags that are set here will be set to the bool in the position
-    /// Flags that are unset here will be unchanged in the position
-    SetFlags(AdapterPositionFlags, bool),
+    /// Flags that are true here will be set to the bool in the position
+    /// Flags that are false here will be unchanged in the position
+    Flags(AdapterPositionFlags, bool),
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
@@ -162,8 +162,8 @@ fn handle_adapter_result(ctx: &InvokeAdapter) -> Result<()> {
         for change in changes {
             match change {
                 PositionChange::Price(px) => update_price(ctx, position, px)?,
-                PositionChange::SetFlags(flags, true) => position.flags |= flags,
-                PositionChange::SetFlags(flags, false) => position.flags &= !flags,
+                PositionChange::Flags(flags, true) => position.flags |= flags,
+                PositionChange::Flags(flags, false) => position.flags &= !flags,
             }
         }
     }
