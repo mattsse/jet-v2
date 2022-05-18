@@ -497,21 +497,6 @@ bitflags::bitflags! {
     }
 }
 
-#[account]
-pub struct MarginPoolOracle {
-    /// The mint for the token being priced
-    token_mint: Pubkey,
-
-    /// The current price/value of the token
-    price: [u8; 24],
-
-    /// The lower bound of the price based on the confidence
-    price_lower: [u8; 24],
-
-    /// The upper bound of the price based on the confidence
-    price_upper: [u8; 24],
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

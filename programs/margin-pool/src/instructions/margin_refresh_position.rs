@@ -21,6 +21,7 @@ use pyth_client::Price;
 use jet_margin::{AdapterResult, MarginAccount, PriceChangeInfo};
 
 use crate::state::*;
+use crate::ErrorCode;
 
 #[derive(Accounts)]
 pub struct MarginRefreshPosition<'info> {
@@ -43,6 +44,12 @@ pub fn margin_refresh_position_handler(ctx: Context<MarginRefreshPosition>) -> R
     // update the oracles with the pyth format
     let token_oracle_data = ctx.accounts.token_price_oracle.try_borrow_data()?;
     let token_oracle = bytemuck::from_bytes::<Price>(&token_oracle_data);
+
+    // verify the price status is actually marked as valid
+    if token_oracle.get_current_price_status() != pyth_client::PriceStatus::Trading {
+        msg!("the oracle status is not valid");
+        return err!(ErrorCode::InvalidPrice);
+    }
 
     let prices = pool.calculate_prices(token_oracle);
 
