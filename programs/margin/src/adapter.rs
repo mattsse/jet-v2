@@ -24,7 +24,7 @@ use anchor_spl::token::TokenAccount;
 use jet_proto_math::Number128;
 
 use crate::{
-    AccountPosition, ErrorCode, MarginAccount, AdapterPositionFlags, PriceInfo,
+    AccountPosition, AdapterPositionFlags, ErrorCode, MarginAccount, PriceInfo,
     MAX_ORACLE_CONFIDENCE, MAX_ORACLE_STALENESS,
 };
 
@@ -92,10 +92,7 @@ pub fn invoke(
 ) -> Result<()> {
     let (instruction, account_infos) = construct_invocation(ctx, account_metas, data);
 
-    program::invoke(
-        &instruction,
-        &account_infos,
-    )?;
+    program::invoke(&instruction, &account_infos)?;
 
     handle_adapter_result(ctx)
 }
@@ -108,15 +105,11 @@ pub fn invoke_signed(
 ) -> Result<()> {
     let (instruction, account_infos) = construct_invocation(ctx, account_metas, data);
 
-    let (owner, seed, bump) = {
-        let account = ctx.margin_account.load()?;
-        (account.owner, account.user_seed, account.bump_seed[0])
-    };
-
+    let ma = ctx.margin_account.load()?;
     program::invoke_signed(
         &instruction,
         &account_infos,
-        &[&[owner.as_ref(), &seed, &[bump]]],
+        &[&[ma.owner.as_ref(), &ma.user_seed, &[ma.bump_seed[0]]]],
     )?;
 
     handle_adapter_result(ctx)
@@ -199,7 +192,11 @@ fn update_balances(ctx: &InvokeAdapter) -> Result<()> {
     Ok(())
 }
 
-fn update_price(ctx: &InvokeAdapter, position: &mut AccountPosition, entry: PriceChangeInfo) -> Result<()> {
+fn update_price(
+    ctx: &InvokeAdapter,
+    position: &mut AccountPosition,
+    entry: PriceChangeInfo,
+) -> Result<()> {
     let clock = Clock::get()?;
     let max_confidence = Number128::from_bps(MAX_ORACLE_CONFIDENCE);
 
@@ -208,24 +205,17 @@ fn update_price(ctx: &InvokeAdapter, position: &mut AccountPosition, entry: Pric
 
     let price = match (confidence, entry.slot) {
         (c, _) if (c / twap) > max_confidence => PriceInfo::new_invalid(),
-        (_, slot) if (clock.slot - slot) > MAX_ORACLE_STALENESS => {
-            PriceInfo::new_invalid()
-        }
-        _ => PriceInfo::new_valid(
-            entry.exponent,
-            entry.value,
-            clock.unix_timestamp as u64,
-        ),
+        (_, slot) if (clock.slot - slot) > MAX_ORACLE_STALENESS => PriceInfo::new_invalid(),
+        _ => PriceInfo::new_valid(entry.exponent, entry.value, clock.unix_timestamp as u64),
     };
 
-    match position.set_price(
-        ctx.adapter_program.key,
-        &price,
-    ) {
+    match position.set_price(ctx.adapter_program.key, &price) {
         Err(Error::AnchorError(e))
             if e.error_code_number
-                == (ErrorCode::UnknownPosition as u32
-                    + anchor_lang::error::ERROR_CODE_OFFSET) => Ok(()),
+                == (ErrorCode::UnknownPosition as u32 + anchor_lang::error::ERROR_CODE_OFFSET) =>
+        {
+            Ok(())
+        }
         Err(e) => Err(e),
         Ok(()) => Ok(()),
     }
