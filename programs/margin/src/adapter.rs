@@ -159,15 +159,13 @@ fn construct_invocation<'info>(
 fn handle_adapter_result(ctx: &InvokeAdapter) -> Result<()> {
     update_balances(ctx)?;
 
-    let result_data = match program::get_return_data() {
-        None => return Err(ErrorCode::NoAdapterResult.into()),
+    let result = match program::get_return_data() {
+        None => AdapterResult::default(),
         Some((program_id, _)) if program_id != ctx.adapter_program.key() => {
             return Err(ErrorCode::WrongProgramAdapterResult.into())
         }
-        Some((_, data)) => data,
+        Some((_, data)) => AdapterResult::deserialize(&mut &data[..])?,
     };
-
-    let result = AdapterResult::deserialize(&mut &result_data[..])?;
 
     let mut margin_account = ctx.margin_account.load_mut()?;
     for (mint, changes) in result.position_changes {

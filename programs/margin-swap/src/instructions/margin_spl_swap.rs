@@ -173,8 +173,5 @@ pub fn margin_spl_swap_handler(
         destination_amount,
     )?;
 
-    // Tell the margin program what accounts changed
-    jet_margin::write_adapter_result(&AdapterResult::default())?;
-
     Ok(())
 }

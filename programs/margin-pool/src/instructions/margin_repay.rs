@@ -18,7 +18,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Token, TokenAccount};
 
-use jet_margin::{AdapterResult, MarginAccount};
+use jet_margin::MarginAccount;
 
 use crate::state::*;
 use crate::{Amount, ErrorCode};
@@ -112,9 +112,6 @@ pub fn margin_repay_handler(ctx: Context<MarginRepay>, amount: Amount) -> Result
         ctx.accounts.burn_deposit_context().with_signer(&signer),
         withdraw_amount.notes,
     )?;
-
-    // Tell the margin program what accounts changed
-    jet_margin::write_adapter_result(&AdapterResult::default())?;
 
     Ok(())
 }
