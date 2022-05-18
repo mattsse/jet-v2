@@ -82,10 +82,7 @@ pub fn margin_withdraw_handler(ctx: Context<MarginWithdraw>, amount: Amount) -> 
     )?;
 
     // Tell the margin program what accounts changed
-    jet_margin::write_adapter_result(&AdapterResult::NewBalanceChange(vec![ctx
-        .accounts
-        .source
-        .key()]))?;
+    jet_margin::write_adapter_result(&AdapterResult::default())?;
 
     Ok(())
 }

@@ -23,7 +23,10 @@ use anchor_spl::token::TokenAccount;
 
 use jet_proto_math::Number128;
 
-use crate::{ErrorCode, MarginAccount, PriceInfo, MAX_ORACLE_CONFIDENCE, MAX_ORACLE_STALENESS};
+use crate::{
+    AccountPosition, ErrorCode, MarginAccount, AdapterPositionFlags, PriceInfo,
+    MAX_ORACLE_CONFIDENCE, MAX_ORACLE_STALENESS,
+};
 
 pub struct InvokeAdapter<'a, 'info> {
     /// The margin account to proxy an action for
@@ -42,26 +45,29 @@ pub struct CompactAccountMeta {
     pub is_writable: u8,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct AdapterResult {
+    /// keyed by token mint, same as position
+    pub position_changes: Vec<(Pubkey, Vec<PositionChange>)>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum AdapterResult {
-    /// The balance of some account positions were changed by this instruction
-    NewBalanceChange(Vec<Pubkey>),
+pub enum PositionChange {
+    /// The price/value of the position has already changed,
+    /// so the margin account must update its price
+    Price(PriceChangeInfo),
 
-    /// The invoked program has previously changed the user's actual balances through
-    /// some other mechanism. This adapter invocation only serves an accounting role
-    /// to bring the margin account's symbolic balances up to date with the reality of
-    /// the underlying positions.
-    PriorBalanceChange(Vec<Pubkey>),
+    /// Flags that are set here will be set in the position
+    /// Flags that are unset here will be unchanged in the position
+    SetFlags(AdapterPositionFlags),
 
-    /// Indicates the price/value of some positions should change
-    PriceChange(Vec<PriceChangeInfo>),
+    /// Flags that are set here will be *unset* in the position
+    /// Flags that are unset here will be unchanged in the position
+    UnsetFlags(AdapterPositionFlags),
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct PriceChangeInfo {
-    /// The mint for the position which has a price change
-    pub mint: Pubkey,
-
     /// The current price of the asset
     pub value: i64,
 
@@ -78,11 +84,49 @@ pub struct PriceChangeInfo {
     pub exponent: i32,
 }
 
+/// Executes an unpermissioned invocation with the requested data
 pub fn invoke(
     ctx: &InvokeAdapter,
     account_metas: Vec<CompactAccountMeta>,
     data: Vec<u8>,
-) -> Result<AdapterResult> {
+) -> Result<()> {
+    let (instruction, account_infos) = construct_invocation(ctx, account_metas, data);
+
+    program::invoke(
+        &instruction,
+        &account_infos,
+    )?;
+
+    handle_adapter_result(ctx)
+}
+
+/// Invoke with the requested data, and sign with the margin account
+pub fn invoke_signed(
+    ctx: &InvokeAdapter,
+    account_metas: Vec<CompactAccountMeta>,
+    data: Vec<u8>,
+) -> Result<()> {
+    let (instruction, account_infos) = construct_invocation(ctx, account_metas, data);
+
+    let (owner, seed, bump) = {
+        let account = ctx.margin_account.load()?;
+        (account.owner, account.user_seed, account.bump_seed[0])
+    };
+
+    program::invoke_signed(
+        &instruction,
+        &account_infos,
+        &[&[owner.as_ref(), &seed, &[bump]]],
+    )?;
+
+    handle_adapter_result(ctx)
+}
+
+fn construct_invocation<'info>(
+    ctx: &InvokeAdapter<'_, 'info>,
+    account_metas: Vec<CompactAccountMeta>,
+    data: Vec<u8>,
+) -> (Instruction, Vec<AccountInfo<'info>>) {
     let mut accounts = vec![AccountMeta {
         pubkey: ctx.margin_account.key(),
         is_signer: true,
@@ -109,16 +153,11 @@ pub fn invoke(
         data,
     };
 
-    let (owner, seed, bump) = {
-        let account = ctx.margin_account.load()?;
-        (account.owner, account.user_seed, account.bump_seed[0])
-    };
+    (instruction, account_infos)
+}
 
-    program::invoke_signed(
-        &instruction,
-        &account_infos,
-        &[&[owner.as_ref(), &seed, &[bump]]],
-    )?;
+fn handle_adapter_result(ctx: &InvokeAdapter) -> Result<()> {
+    update_balances(ctx)?;
 
     let result_data = match program::get_return_data() {
         None => return Err(ErrorCode::NoAdapterResult.into()),
@@ -129,65 +168,77 @@ pub fn invoke(
     };
 
     let result = AdapterResult::deserialize(&mut &result_data[..])?;
+
     let mut margin_account = ctx.margin_account.load_mut()?;
+    for (mint, changes) in result.position_changes {
+        let position = margin_account.get_position_mut(&mint)?;
+        change_position(ctx, position, changes)?
+    }
 
-    match result {
-        AdapterResult::NewBalanceChange(ref modified_accounts)
-        | AdapterResult::PriorBalanceChange(ref modified_accounts) => {
-            for modified in modified_accounts {
-                let account_info = account_infos.iter().find(|a| a.key == modified).unwrap();
-                let account =
-                    TokenAccount::try_deserialize(&mut &**account_info.try_borrow_data()?)?;
+    Ok(())
+}
 
-                // sanity check that this account is actually owned by the margin program
-                if account.owner != ctx.margin_account.key() {
-                    msg!("position account {} not owned", modified);
-                    return Err(ErrorCode::PositionNotOwned.into());
-                }
+fn change_position(
+    ctx: &InvokeAdapter,
+    position: &mut AccountPosition,
+    changes: Vec<PositionChange>,
+) -> Result<()> {
+    for change in changes {
+        match change {
+            PositionChange::Price(px) => update_price(ctx, position, px)?,
+            PositionChange::SetFlags(f) => position.flags |= f,
+            PositionChange::UnsetFlags(f) => position.flags &= !f,
+        }
+    }
 
-                margin_account.set_position_balance(
+    Ok(())
+}
+
+fn update_balances(ctx: &InvokeAdapter) -> Result<()> {
+    for account_info in ctx.remaining_accounts {
+        if account_info.owner == &TokenAccount::owner() {
+            let account = TokenAccount::try_deserialize(&mut &**account_info.try_borrow_data()?)?;
+            if account.owner == ctx.margin_account.key() {
+                ctx.margin_account.load_mut()?.set_position_balance(
                     &account.mint,
                     account_info.key,
                     account.amount,
                 )?;
             }
         }
-
-        AdapterResult::PriceChange(ref price_list) => {
-            let clock = Clock::get()?;
-            let max_confidence = Number128::from_bps(MAX_ORACLE_CONFIDENCE);
-
-            for entry in price_list {
-                let twap = Number128::from_decimal(entry.twap, entry.exponent);
-                let confidence = Number128::from_decimal(entry.confidence, entry.exponent);
-
-                let price = match (confidence, entry.slot) {
-                    (c, _) if (c / twap) > max_confidence => PriceInfo::new_invalid(),
-                    (_, slot) if (clock.slot - slot) > MAX_ORACLE_STALENESS => {
-                        PriceInfo::new_invalid()
-                    }
-                    _ => PriceInfo::new_valid(
-                        entry.exponent,
-                        entry.value,
-                        clock.unix_timestamp as u64,
-                    ),
-                };
-
-                match margin_account.set_position_price(
-                    &entry.mint,
-                    ctx.adapter_program.key,
-                    &price,
-                ) {
-                    Err(Error::AnchorError(e))
-                        if e.error_code_number
-                            == (ErrorCode::UnknownPosition as u32
-                                + anchor_lang::error::ERROR_CODE_OFFSET) => {}
-                    Err(e) => return Err(e),
-                    Ok(()) => (),
-                }
-            }
-        }
     }
 
-    Ok(result)
+    Ok(())
+}
+
+fn update_price(ctx: &InvokeAdapter, position: &mut AccountPosition, entry: PriceChangeInfo) -> Result<()> {
+    let clock = Clock::get()?;
+    let max_confidence = Number128::from_bps(MAX_ORACLE_CONFIDENCE);
+
+    let twap = Number128::from_decimal(entry.twap, entry.exponent);
+    let confidence = Number128::from_decimal(entry.confidence, entry.exponent);
+
+    let price = match (confidence, entry.slot) {
+        (c, _) if (c / twap) > max_confidence => PriceInfo::new_invalid(),
+        (_, slot) if (clock.slot - slot) > MAX_ORACLE_STALENESS => {
+            PriceInfo::new_invalid()
+        }
+        _ => PriceInfo::new_valid(
+            entry.exponent,
+            entry.value,
+            clock.unix_timestamp as u64,
+        ),
+    };
+
+    match position.set_price(
+        ctx.adapter_program.key,
+        &price,
+    ) {
+        Err(Error::AnchorError(e))
+            if e.error_code_number
+                == (ErrorCode::UnknownPosition as u32
+                    + anchor_lang::error::ERROR_CODE_OFFSET) => Ok(()),
+        Err(e) => Err(e),
+        Ok(()) => Ok(()),
+    }
 }

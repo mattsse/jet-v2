@@ -163,7 +163,15 @@ impl MarginAccount {
             return err!(ErrorCode::CloseNonZeroPosition);
         }
 
+        if removed.flags.contains(AdapterPositionFlags::REQUIRED) {
+            return err!(ErrorCode::CloseRequiredPosition);
+        }
+
         Ok(())
+    }
+
+    pub fn get_position_mut(&mut self, mint: &Pubkey) -> Result<&mut AccountPosition> {
+        self.position_list_mut().get_mut(mint)
     }
 
     /// Change the balance for a position
@@ -394,7 +402,19 @@ pub struct AccountPosition {
     /// The max staleness for the account balance (seconds)
     pub collateral_max_staleness: u64,
 
-    _reserved: [u8; 24],
+    /// Flags that are set by the adapter
+    pub flags: AdapterPositionFlags,
+
+    _reserved: [u8; 23],
+}
+
+
+bitflags::bitflags! {
+    #[derive(AnchorSerialize, AnchorDeserialize, Default)]
+    pub struct AdapterPositionFlags: u8 {
+        /// The position may not be removed
+        const REQUIRED = 1 << 0;
+    }
 }
 
 impl AccountPosition {
@@ -420,7 +440,7 @@ impl AccountPosition {
     }
 
     /// Update the price for this position
-    fn set_price(&mut self, adapter: &Pubkey, price: &PriceInfo) -> Result<()> {
+    pub fn set_price(&mut self, adapter: &Pubkey, price: &PriceInfo) -> Result<()> {
         if self.adapter != *adapter {
             return err!(ErrorCode::InvalidPriceAdapter);
         }
@@ -734,7 +754,8 @@ mod tests {
             exponent: i16::default(),
             collateral_weight: u16::default(),
             collateral_max_staleness: u64::default(),
-            _reserved: [0; 24],
+            flags: AdapterPositionFlags::default(),
+            _reserved: [0; 23],
         };
 
         assert_ser_tokens(

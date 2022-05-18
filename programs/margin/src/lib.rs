@@ -29,7 +29,7 @@ pub(crate) mod util;
 use instructions::*;
 pub use state::*;
 
-pub use adapter::{AdapterResult, CompactAccountMeta, PriceChangeInfo};
+pub use adapter::{AdapterResult, CompactAccountMeta, PositionChange, PriceChangeInfo};
 
 /// The minimum collateral ratio that a margin account must maintain before
 /// being subject to liquidation
@@ -189,6 +189,10 @@ pub enum ErrorCode {
     /// 141015 - Attempting to use a position not owned by the account
     #[msg("attempting to use un-owned position")]
     PositionNotOwned,
+
+    /// 141016 - Attempting to close a position that is required by the adapter
+    #[msg("attempting to close a position that is required by the adapter")]
+    CloseRequiredPosition,
 
     /// 141020 - The adapter providing a price value is incorrect for an asset
     #[msg("wrong adapter to provide the price")]

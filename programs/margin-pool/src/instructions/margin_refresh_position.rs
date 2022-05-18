@@ -18,7 +18,7 @@
 use anchor_lang::prelude::*;
 use pyth_client::Price;
 
-use jet_margin::{AdapterResult, MarginAccount, PriceChangeInfo};
+use jet_margin::{MarginAccount, AdapterResult, PositionChange, PriceChangeInfo};
 
 use crate::state::*;
 
@@ -52,7 +52,6 @@ pub fn margin_refresh_position_handler(ctx: Context<MarginRefreshPosition>) -> R
         value: prices.deposit_note_price,
         confidence: prices.deposit_note_conf,
         twap: prices.deposit_note_twap,
-        mint: pool.deposit_note_mint,
     };
 
     let loan_price_info = PriceChangeInfo {
@@ -61,14 +60,21 @@ pub fn margin_refresh_position_handler(ctx: Context<MarginRefreshPosition>) -> R
         value: prices.loan_note_price,
         confidence: prices.loan_note_conf,
         twap: prices.loan_note_twap,
-        mint: pool.loan_note_mint,
     };
 
     // Tell the margin program what the current prices are
-    jet_margin::write_adapter_result(&AdapterResult::PriceChange(vec![
-        deposit_price_info,
-        loan_price_info,
-    ]))?;
+    jet_margin::write_adapter_result(&AdapterResult {
+        position_changes: vec![
+            (
+                pool.deposit_note_mint,
+                vec![PositionChange::Price(deposit_price_info)],
+            ),
+            (
+                pool.loan_note_mint,
+                vec![PositionChange::Price(loan_price_info)],
+            ),
+        ],
+    })?;
 
     Ok(())
 }

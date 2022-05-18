@@ -18,7 +18,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Token, TokenAccount};
 
-use jet_margin::{AdapterResult, MarginAccount};
+use jet_margin::{MarginAccount, AdapterResult};
 
 use crate::state::*;
 use crate::{Amount, ErrorCode};
@@ -114,10 +114,7 @@ pub fn margin_repay_handler(ctx: Context<MarginRepay>, amount: Amount) -> Result
     )?;
 
     // Tell the margin program what accounts changed
-    jet_margin::write_adapter_result(&AdapterResult::NewBalanceChange(vec![
-        ctx.accounts.loan_account.key(),
-        ctx.accounts.deposit_account.key(),
-    ]))?;
+    jet_margin::write_adapter_result(&AdapterResult::default())?;
 
     Ok(())
 }

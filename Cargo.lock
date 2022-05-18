@@ -1521,6 +1521,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "bitflags",
  "bytemuck",
  "jet-proto-math",
  "jet-proto-metadata",
