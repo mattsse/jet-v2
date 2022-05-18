@@ -18,7 +18,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, MintTo, Token, TokenAccount};
 
-use jet_margin::{MarginAccount, AdapterResult};
+use jet_margin::{AdapterResult, MarginAccount};
 
 use crate::{state::*, AmountKind};
 use crate::{Amount, ErrorCode};

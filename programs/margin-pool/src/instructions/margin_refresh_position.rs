@@ -18,7 +18,7 @@
 use anchor_lang::prelude::*;
 use pyth_client::Price;
 
-use jet_margin::{MarginAccount, AdapterResult, PositionChange, PriceChangeInfo};
+use jet_margin::{AdapterResult, MarginAccount, PositionChange, PriceChangeInfo};
 
 use crate::state::*;
 
