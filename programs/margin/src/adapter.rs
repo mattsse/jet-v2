@@ -170,22 +170,12 @@ fn handle_adapter_result(ctx: &InvokeAdapter) -> Result<()> {
     let mut margin_account = ctx.margin_account.load_mut()?;
     for (mint, changes) in result.position_changes {
         let position = margin_account.get_position_mut(&mint)?;
-        change_position(ctx, position, changes)?
-    }
-
-    Ok(())
-}
-
-fn change_position(
-    ctx: &InvokeAdapter,
-    position: &mut AccountPosition,
-    changes: Vec<PositionChange>,
-) -> Result<()> {
-    for change in changes {
-        match change {
-            PositionChange::Price(px) => update_price(ctx, position, px)?,
-            PositionChange::SetFlags(f) => position.flags |= f,
-            PositionChange::UnsetFlags(f) => position.flags &= !f,
+        for change in changes {
+            match change {
+                PositionChange::Price(px) => update_price(ctx, position, px)?,
+                PositionChange::SetFlags(f) => position.flags |= f,
+                PositionChange::UnsetFlags(f) => position.flags &= !f,
+            }
         }
     }
 
