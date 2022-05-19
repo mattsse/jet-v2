@@ -143,4 +143,7 @@ pub enum ErrorCode {
 
     /// 141105 - The oracle is not reporting a valid price
     InvalidPrice,
+
+    /// 141106 - The oracle account is not valid
+    InvalidOracle,
 }
