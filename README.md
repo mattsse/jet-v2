@@ -22,26 +22,41 @@
   </h4>
 </div>
 
-# Install
+# Installation
 
 To install Anchor please see the [Anchor Documentation](https://project-serum.github.io/anchor/getting-started/installation.html)
 
 Make sure you update Solana to the latest version
+
 ```
-sh -c "$(curl -sSfL https://release.solana.com/v1.9.2/install)"
+# Update Solana
+solana-install update
+
+# Or install Solana from scratch
+sh -c "$(curl -sSfL https://release.solana.com/latest/install)"
 ```
 
-Install anchor
+Install anchor v0.21.0
+
 ```
-npm i @project-serum/anchor-cli@0.21.0 -g
+# Install dependencies if running Ubuntu
+sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
+
+cargo install --git https://github.com/project-serum/anchor avm --locked --force
+
+avm install 0.21.0
+avm use 0.21.0
+anchor --version # anchor-cli 0.21.0
 ```
 
 Install the project's node_modules
+
 ```
-yarn
+npm i
 ```
 
 Then run
+
 ```
 anchor test
 ```
